@@ -3,81 +3,101 @@
 #include "loadbalancer.h"
 
 #include <iostream>
-#include <ctime>
 #include <cstdlib>
 #include <sstream>
 
 using namespace std;
 
 const int NUM_SERVERS = 5;
-static int ps = 0;			// the process ID incrementer, static so one copy persists
+static int ps = 0;
 
 request createRandomRequest()
 {
    stringstream ips, ipd;
    request r;
-   // For example, 12.243.87.112
-   ips << (rand() % 256) << "." << (rand() % 256) << "." << (rand() % 256) << "." << (rand() % 256);
-   ipd << (rand() % 256) << "." << (rand() % 256) << "." << (rand() % 256) << "." << (rand() % 256);
+
+   ips << (rand() % 256) << "."
+       << (rand() % 256) << "."
+       << (rand() % 256) << "."
+       << (rand() % 256);
+
+   ipd << (rand() % 256) << "."
+       << (rand() % 256) << "."
+       << (rand() % 256) << "."
+       << (rand() % 256);
+
    r.source = ips.str();
    r.destination = ipd.str();
-   r.processTime = (rand() % 500);
+   r.processTime = rand() % 500;
    r.pid = ++ps;
+
    return r;
 }
 
 int main()
 {
-   // random number generator
+   // Fixed seed makes the program deterministic.
+   srand(1);
 
+   loadbalancer lb;
 
-   // create a loadbalancer
-
-   
-   // start off with a "full" queue
+   // Start with a full queue containing 10 requests.
    for (int i = 0; i < 10; i++)
    {
- 
- 
+      lb.addRequest(createRandomRequest());
    }
-   
-   // an array of webservers, each given an initial request to process
+
+   // Create the webservers and give each one a starting request.
    webserver webarray[NUM_SERVERS];
+
    for (int i = 0; i < NUM_SERVERS; i++)
    {
+      webarray[i] = webserver('A' + i);
 
-
-
-
+      request r = lb.getRequest();
+      webarray[i].addRequest(r, lb.getTime());
    }
-   // loop
+
+   // Run the simulation.
    while (lb.getTime() < 10000)
    {
       int currTime = lb.getTime();
       int size = lb.getSize();
-      // check each webserver if it's done
-      if(webarray[currTime % NUM_SERVERS].isRequestDone(currTime))
+
+      int serverIndex = currTime % NUM_SERVERS;
+
+      // Check whether the selected server has finished its request.
+      if (webarray[serverIndex].isRequestDone(currTime))
       {
-         // get request from the server
-		 
-		 // print some stats
-         cout << "Finished at " << currTime << " " << webarray[currTime % NUM_SERVERS].getName();
-         cout << " pid " << r.pid <<"/" << size << " process time was " << r.processTime ;
-         cout << " processed request from " << r.source << " to " << r.destination ;
-         cout << endl;
-		 
-         // then give it a new request
-         
+         request finishedRequest = webarray[serverIndex].getRequest();
+
+         cout << "Finished at " << currTime << " "
+              << webarray[serverIndex].getName()
+              << " pid " << finishedRequest.pid
+              << "/" << size
+              << " process time was " << finishedRequest.processTime
+              << " processed request from "
+              << finishedRequest.source
+              << " to "
+              << finishedRequest.destination
+              << endl;
+
+         // Give the server another request if one is waiting.
+         if (!lb.isRequestQueueEmpty())
+         {
+            request nextRequest = lb.getRequest();
+            webarray[serverIndex].addRequest(nextRequest, currTime);
+         }
       }
-      // every random set of time, or get a new request
 
+      // Randomly add new requests to the load balancer.
+      if (rand() % 100 < 10)
+      {
+         lb.addRequest(createRandomRequest());
+      }
 
-
-
-
-
-
+      lb.incTime();
    }
 
+   return 0;
 }
-
