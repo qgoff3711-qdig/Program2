@@ -24,7 +24,7 @@ void loadbalancer::addRequest(request r)
 request loadbalancer::getRequest()
 {
    // Use front() for a queue.
-   request r = requestQueue.front();
+   request r = requestQueue.top();
 
    // For a stack or priority_queue, replace the line above with:
    // request r = requestQueue.top();
